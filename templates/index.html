@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UV Radiant Exposure Analysis</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #fcfbf9; /* Elegant ivory/off-white */
+            --card-bg: #ffffff;
+            --text-main: #1a1a1a;
+            --navy-accent: #1e3a5f;
+            --border-color: #d1d5db;
+        }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            line-height: 1.6;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+            max-width: 1100px;
+            width: 100%;
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 10px 15px rgba(0, 0, 0, 0.03);
+        }
+
+        h2 {
+            color: var(--navy-accent);
+            margin-top: 0;
+            font-size: 22px;
+            font-weight: normal;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid var(--navy-accent);
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+        }
+
+        .form-group { margin-bottom: 18px; }
+
+        label {
+            display: block;
+            color: var(--text-main);
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            background: #fdfdfd;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 15px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--navy-accent);
+            background: #ffffff;
+        }
+
+        /* Classy, professional button */
+        button {
+            width: 100%;
+            padding: 14px;
+            margin-top: 10px;
+            background-color: var(--navy-accent);
+            color: white;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #112238;
+        }
+
+        button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        /* Output Dashboard Styling */
+        .output-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .data-readout {
+            font-size: 42px;
+            color: var(--navy-accent);
+            margin: 5px 0 15px 0;
+            font-weight: bold;
+            border-left: 4px solid var(--navy-accent);
+            padding-left: 15px;
+            background: #f8fafc;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        #map {
+            height: 280px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+            background: #eaeaea;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 280px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        #status-text { 
+            font-style: italic; 
+            color: #666; 
+            text-align: center; 
+            margin-top: 10px; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-grid">
+    <div class="panel">
+        <h2>Parameters</h2>
+        <form id="uvForm">
+            <div class="form-group">
+                <label>Target City</label>
+                <input type="text" id="city" placeholder="e.g. Boston" required>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex: 2;">
+                    <label>State</label>
+                    <select id="state" required>
+                        <option value="">Select State...</option>
+                        <option value="AL">Alabama</option><option value="AK">Alaska</option>
+                        <option value="AZ">Arizona</option><option value="AR">Arkansas</option>
+                        <option value="CA">California</option><option value="CO">Colorado</option>
+                        <option value="CT">Connecticut</option><option value="DE">Delaware</option>
+                        <option value="FL">Florida</option><option value="GA">Georgia</option>
+                        <option value="HI">Hawaii</option><option value="ID">Idaho</option>
+                        <option value="IL">Illinois</option><option value="IN">Indiana</option>
+                        <option value="IA">Iowa</option><option value="KS">Kansas</option>
+                        <option value="KY">Kentucky</option><option value="LA">Louisiana</option>
+                        <option value="ME">Maine</option><option value="MD">Maryland</option>
+                        <option value="MA">Massachusetts</option><option value="MI">Michigan</option>
+                        <option value="MN">Minnesota</option><option value="MS">Mississippi</option>
+                        <option value="MO">Missouri</option><option value="MT">Montana</option>
+                        <option value="NE">Nebraska</option><option value="NV">Nevada</option>
+                        <option value="NH">New Hampshire</option><option value="NJ">New Jersey</option>
+                        <option value="NM">New Mexico</option><option value="NY">New York</option>
+                        <option value="NC">North Carolina</option><option value="ND">North Dakota</option>
+                        <option value="OH">Ohio</option><option value="OK">Oklahoma</option>
+                        <option value="OR">Oregon</option><option value="PA">Pennsylvania</option>
+                        <option value="RI">Rhode Island</option><option value="SC">South Carolina</option>
+                        <option value="SD">South Dakota</option><option value="TN">Tennessee</option>
+                        <option value="TX">Texas</option><option value="UT">Utah</option>
+                        <option value="VT">Vermont</option><option value="VA">Virginia</option>
+                        <option value="WA">Washington</option><option value="WV">West Virginia</option>
+                        <option value="WI">Wisconsin</option><option value="WY">Wyoming</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Zip Code</label>
+                    <input type="text" id="zip" placeholder="02108">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Observation Date</label>
+                <input type="date" id="date" required>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>Start Time</label>
+                    <input type="time" id="startTime" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>End Time</label>
+                    <input type="time" id="endTime" required>
+                </div>
+            </div>
+            
+            <button type="submit" id="submitBtn">Execute Analysis</button>
+            <div id="status-text"></div>
+        </form>
+    </div>
+
+    <div class="panel output-panel">
+        <h2>Diagnostic Report</h2>
+        
+        <div id="standby-text" style="text-align: center; color: #666; font-style: italic; margin-top: 80px;">
+            Awaiting parameters to generate report...
+        </div>
+
+        <div id="results-container" style="display: none;">
+            <label style="color: #666; text-transform: uppercase;">Calculated Broadband UV Radiant Exposure</label>
+            <div class="data-readout" id="main-readout">0 J/m²</div>
+            
+            <div class="grid-2">
+                <div>
+                    <label style="color: #666; text-transform: uppercase;">Location Mapping</label>
+                    <div id="map"></div>
+                </div>
+                
+                <div>
+                    <label style="color: #666; text-transform: uppercase;">Exposure Visualization</label>
+                    <div class="chart-container">
+                        <canvas id="uvChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Set Chart.js global font to match our theme
+    Chart.defaults.font.family = "'Times New Roman', Times, serif";
+    Chart.defaults.color = "#1a1a1a";
+
+    let map = null;
+    let marker = null;
+    let uvChart = null;
+
+    document.getElementById('uvForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        const status = document.getElementById('status-text');
+        const results = document.getElementById('results-container');
+        const standby = document.getElementById('standby-text');
+        
+        btn.disabled = true;
+        status.innerText = "Processing location data...";
+        standby.style.display = "none";
+        
+        const city = document.getElementById('city').value;
+        const state = document.getElementById('state').value;
+        const zip = document.getElementById('zip').value;
+
+        try {
+            // Geocoding
+            const geoQuery = `${city}, ${state} ${zip} USA`;
+            const geoUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(geoQuery)}&limit=1`;
+            const geoResponse = await fetch(geoUrl);
+            const geoData = await geoResponse.json();
+
+            if (geoData.length === 0) throw new Error("Location not found. Please verify spelling.");
+            
+            const lat = geoData[0].lat;
+            const lon = geoData[0].lon;
+
+            // Fetch Data from Python Backend
+            status.innerText = "Querying NREL database...";
+            const payload = {
+                latitude: lat,
+                longitude: lon,
+                date: document.getElementById('date').value,
+                start_time: document.getElementById('startTime').value,
+                end_time: document.getElementById('endTime').value
+            };
+
+            const response = await fetch('/api/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+
+            if(!data.success) throw new Error(data.error);
+
+            // Update the UI
+            results.style.display = "block";
+            status.innerText = "Analysis complete.";
+            setTimeout(() => status.innerText = "", 3000); // Clear status after 3 seconds
+            
+            // Bold critical info
+            const dose = data.results.broadband_uvr_j_m2;
+            document.getElementById('main-readout').innerText = dose.toLocaleString() + " J/m²";
+
+            // Update the Map (Clean Light Theme)
+            if (!map) {
+                map = L.map('map').setView([lat, lon], 12);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap contributors & CartoDB'
+                }).addTo(map);
+            } else {
+                map.setView([lat, lon], 12);
+            }
+            if (marker) map.removeLayer(marker);
+            // Elegant Navy Marker
+            marker = L.circleMarker([lat, lon], { color: '#1e3a5f', fillColor: '#1e3a5f', radius: 6, fillOpacity: 0.8 }).addTo(map);
+
+            // Build the Chart
+            const ctx = document.getElementById('uvChart').getContext('2d');
+            if (uvChart) uvChart.destroy(); 
+            
+            uvChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Calculated Dose', 'Reference Average'],
+                    datasets: [{
+                        label: 'Radiant Exposure (J/m²)',
+                        data: [dose, 250000], 
+                        backgroundColor: ['#1e3a5f', '#d1d5db'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#eaeaea' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+        } catch (error) {
+            status.innerText = `Error: ${error.message}`;
+            status.style.color = "red";
+        } finally {
+            btn.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
