@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UV Radiant Exposure Analysis</title>
+    <title>Clinical UV Dosimetry</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -11,11 +11,15 @@
 
     <style>
         :root {
-            --bg-color: #fcfbf9; /* Elegant ivory/off-white */
+            --bg-color: #f8fafc;
             --card-bg: #ffffff;
-            --text-main: #1a1a1a;
-            --navy-accent: #1e3a5f;
-            --border-color: #d1d5db;
+            --text-main: #1e293b;
+            --navy-accent: #0f172a;
+            --medical-blue: #0284c7;
+            --border-color: #e2e8f0;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --safe: #22c55e;
         }
 
         body {
@@ -23,186 +27,190 @@
             background-color: var(--bg-color);
             color: var(--text-main);
             margin: 0;
-            padding: 40px 20px;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
-            line-height: 1.6;
+            align-items: flex-start;
+            padding: 40px 20px;
         }
 
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 350px 1fr;
-            gap: 30px;
-            max-width: 1100px;
+        /* --- SPA View Transitions --- */
+        .view-container {
+            display: none; /* Hidden by default */
             width: 100%;
+            max-width: 1000px;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        
+        .view-container.active {
+            display: block; /* Shows the active page */
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .panel {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
-            padding: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 10px 15px rgba(0, 0, 0, 0.03);
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            margin: 0 auto;
         }
+
+        .input-panel { max-width: 600px; }
 
         h2 {
             color: var(--navy-accent);
             margin-top: 0;
-            font-size: 22px;
+            font-size: 24px;
             font-weight: normal;
             text-transform: uppercase;
             letter-spacing: 1px;
             border-bottom: 2px solid var(--navy-accent);
-            padding-bottom: 10px;
-            margin-bottom: 25px;
+            padding-bottom: 12px;
+            margin-bottom: 30px;
         }
 
-        .form-group { margin-bottom: 18px; }
+        .form-row { display: flex; gap: 15px; margin-bottom: 20px; }
+        .form-group { flex: 1; margin-bottom: 20px; }
 
         label {
             display: block;
             color: var(--text-main);
             font-size: 14px;
             font-weight: bold;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             letter-spacing: 0.5px;
+            text-transform: uppercase;
         }
 
         input, select {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             background: #fdfdfd;
             border: 1px solid var(--border-color);
+            border-radius: 4px;
             color: var(--text-main);
             font-family: 'Times New Roman', Times, serif;
-            font-size: 15px;
+            font-size: 16px;
             box-sizing: border-box;
             transition: border-color 0.2s;
         }
 
         input:focus, select:focus {
             outline: none;
-            border-color: var(--navy-accent);
-            background: #ffffff;
+            border-color: var(--medical-blue);
         }
 
-        /* Classy, professional button */
-        button {
+        button.primary-btn {
             width: 100%;
-            padding: 14px;
-            margin-top: 10px;
+            padding: 16px;
             background-color: var(--navy-accent);
             color: white;
             font-family: 'Times New Roman', Times, serif;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
             letter-spacing: 1px;
             border: none;
+            border-radius: 4px;
             cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             transition: background-color 0.2s;
         }
 
-        button:hover {
-            background-color: #112238;
-        }
+        button.primary-btn:hover { background-color: #1e293b; }
+        button:disabled { background-color: #94a3b8; cursor: not-allowed; }
 
-        button:disabled {
-            background-color: #9ca3af;
-            cursor: not-allowed;
-        }
-
-        /* Output Dashboard Styling */
-        .output-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
-        }
-
-        .data-readout {
-            font-size: 42px;
-            color: var(--navy-accent);
-            margin: 5px 0 15px 0;
+        /* Secondary Back Button */
+        button.back-btn {
+            background: none;
+            border: none;
+            color: var(--medical-blue);
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 16px;
             font-weight: bold;
-            border-left: 4px solid var(--navy-accent);
-            padding-left: 15px;
-            background: #f8fafc;
+            cursor: pointer;
+            padding: 0;
+            margin-bottom: 20px;
+            text-decoration: underline;
+        }
+
+        /* --- Report Page Styling --- */
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f1f5f9;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+            border-left: 5px solid var(--medical-blue);
+        }
+
+        .readout-block { text-align: left; }
+        .readout-title { font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b; }
+        .readout-value { font-size: 32px; font-weight: bold; color: var(--navy-accent); margin-top: 5px; }
+        
+        .risk-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: white;
+            font-size: 14px;
+            text-transform: uppercase;
         }
 
         .grid-2 {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 25px;
+            gap: 30px;
         }
 
-        #map {
-            height: 280px;
-            width: 100%;
-            border: 1px solid var(--border-color);
-            background: #eaeaea;
-        }
+        #map { height: 350px; width: 100%; border-radius: 6px; border: 1px solid var(--border-color); }
+        .chart-container { height: 350px; width: 100%; border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; box-sizing: border-box; }
 
-        .chart-container {
-            position: relative;
-            height: 280px;
-            width: 100%;
-            border: 1px solid var(--border-color);
-            padding: 10px;
-            box-sizing: border-box;
-        }
-
-        #status-text { 
-            font-style: italic; 
-            color: #666; 
-            text-align: center; 
-            margin-top: 10px; 
+        #loading-overlay {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9);
+            justify-content: center; align-items: center;
+            font-size: 24px; font-weight: bold; color: var(--medical-blue);
+            z-index: 1000;
         }
     </style>
 </head>
 <body>
 
-<div class="dashboard-grid">
-    <div class="panel">
-        <h2>Parameters</h2>
+<div id="loading-overlay">Compiling Clinical Data...</div>
+
+<div id="input-view" class="view-container active">
+    <div class="panel input-panel">
+        <h2>Patient & Location Parameters</h2>
         <form id="uvForm">
+            
             <div class="form-group">
-                <label>Target City</label>
-                <input type="text" id="city" placeholder="e.g. Boston" required>
+                <label>Fitzpatrick Skin Phototype</label>
+                <select id="skinType" required>
+                    <option value="">Select Phototype...</option>
+                    <option value="I">Type I - Pale white (Always burns, never tans)</option>
+                    <option value="II">Type II - Fair (Usually burns, tans minimally)</option>
+                    <option value="III">Type III - Light brown (Sometimes burns, usually tans)</option>
+                    <option value="IV">Type IV - Moderate brown (Rarely burns, always tans)</option>
+                    <option value="V">Type V - Dark brown (Very rarely burns)</option>
+                    <option value="VI">Type VI - Deeply pigmented (Never burns)</option>
+                </select>
             </div>
-            <div style="display: flex; gap: 10px;">
+
+            <div class="form-row">
                 <div class="form-group" style="flex: 2;">
-                    <label>State</label>
-                    <select id="state" required>
-                        <option value="">Select State...</option>
-                        <option value="AL">Alabama</option><option value="AK">Alaska</option>
-                        <option value="AZ">Arizona</option><option value="AR">Arkansas</option>
-                        <option value="CA">California</option><option value="CO">Colorado</option>
-                        <option value="CT">Connecticut</option><option value="DE">Delaware</option>
-                        <option value="FL">Florida</option><option value="GA">Georgia</option>
-                        <option value="HI">Hawaii</option><option value="ID">Idaho</option>
-                        <option value="IL">Illinois</option><option value="IN">Indiana</option>
-                        <option value="IA">Iowa</option><option value="KS">Kansas</option>
-                        <option value="KY">Kentucky</option><option value="LA">Louisiana</option>
-                        <option value="ME">Maine</option><option value="MD">Maryland</option>
-                        <option value="MA">Massachusetts</option><option value="MI">Michigan</option>
-                        <option value="MN">Minnesota</option><option value="MS">Mississippi</option>
-                        <option value="MO">Missouri</option><option value="MT">Montana</option>
-                        <option value="NE">Nebraska</option><option value="NV">Nevada</option>
-                        <option value="NH">New Hampshire</option><option value="NJ">New Jersey</option>
-                        <option value="NM">New Mexico</option><option value="NY">New York</option>
-                        <option value="NC">North Carolina</option><option value="ND">North Dakota</option>
-                        <option value="OH">Ohio</option><option value="OK">Oklahoma</option>
-                        <option value="OR">Oregon</option><option value="PA">Pennsylvania</option>
-                        <option value="RI">Rhode Island</option><option value="SC">South Carolina</option>
-                        <option value="SD">South Dakota</option><option value="TN">Tennessee</option>
-                        <option value="TX">Texas</option><option value="UT">Utah</option>
-                        <option value="VT">Vermont</option><option value="VA">Virginia</option>
-                        <option value="WA">Washington</option><option value="WV">West Virginia</option>
-                        <option value="WI">Wisconsin</option><option value="WY">Wyoming</option>
-                    </select>
+                    <label>Target City</label>
+                    <input type="text" id="city" placeholder="e.g. Dallas" required>
                 </div>
                 <div class="form-group" style="flex: 1;">
-                    <label>Zip Code</label>
-                    <input type="text" id="zip" placeholder="02108">
+                    <label>State</label>
+                    <input type="text" id="state" placeholder="TX" maxlength="2" required>
                 </div>
             </div>
 
@@ -211,44 +219,47 @@
                 <input type="date" id="date" required>
             </div>
             
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>Start Time</label>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Start Time (Local)</label>
                     <input type="time" id="startTime" required>
                 </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>End Time</label>
+                <div class="form-group">
+                    <label>End Time (Local)</label>
                     <input type="time" id="endTime" required>
                 </div>
             </div>
             
-            <button type="submit" id="submitBtn">Execute Analysis</button>
-            <div id="status-text"></div>
+            <button type="submit" id="submitBtn" class="primary-btn">Generate Diagnostic Report</button>
         </form>
     </div>
+</div>
 
-    <div class="panel output-panel">
-        <h2>Diagnostic Report</h2>
+<div id="report-view" class="view-container">
+    <div class="panel">
+        <button id="backBtn" class="back-btn">← Run New Patient Scan</button>
+        <h2>Dosimetry & Photobiology Report</h2>
         
-        <div id="standby-text" style="text-align: center; color: #666; font-style: italic; margin-top: 80px;">
-            Awaiting parameters to generate report...
+        <div class="report-header">
+            <div class="readout-block">
+                <div class="readout-title">Total Broadband Exposure</div>
+                <div class="readout-value" id="broadband-readout">0 J/m²</div>
+            </div>
+            <div class="readout-block" style="text-align: right;">
+                <div class="readout-title">Clinical Sunburn Risk</div>
+                <div id="risk-badge" class="risk-badge" style="background: var(--safe); margin-top: 10px; display: inline-block;">Safe</div>
+            </div>
         </div>
-
-        <div id="results-container" style="display: none;">
-            <label style="color: #666; text-transform: uppercase;">Calculated Broadband UV Radiant Exposure</label>
-            <div class="data-readout" id="main-readout">0 J/m²</div>
-            
-            <div class="grid-2">
-                <div>
-                    <label style="color: #666; text-transform: uppercase;">Location Mapping</label>
-                    <div id="map"></div>
-                </div>
-                
-                <div>
-                    <label style="color: #666; text-transform: uppercase;">Exposure Visualization</label>
-                    <div class="chart-container">
-                        <canvas id="uvChart"></canvas>
-                    </div>
+        
+        <div class="grid-2">
+            <div>
+                <label>Satellite Telemetry Location</label>
+                <div id="map"></div>
+            </div>
+            <div>
+                <label>Erythemal Threshold Analysis</label>
+                <div class="chart-container">
+                    <canvas id="uvChart"></canvas>
                 </div>
             </div>
         </div>
@@ -256,43 +267,46 @@
 </div>
 
 <script>
-    // Set Chart.js global font to match our theme
     Chart.defaults.font.family = "'Times New Roman', Times, serif";
-    Chart.defaults.color = "#1a1a1a";
+    Chart.defaults.color = "#1e293b";
 
     let map = null;
     let marker = null;
     let uvChart = null;
 
+    // Standard Minimal Erythemal Dose (MED) J/m2 thresholds based on Fitzpatrick Type
+    const fitzMED = { "I": 200, "II": 250, "III": 300, "IV": 450, "V": 600, "VI": 1000 };
+
+    // PAGE NAVIGATION LOGIC
+    const inputView = document.getElementById('input-view');
+    const reportView = document.getElementById('report-view');
+    const overlay = document.getElementById('loading-overlay');
+
+    document.getElementById('backBtn').addEventListener('click', () => {
+        reportView.classList.remove('active');
+        inputView.classList.add('active');
+    });
+
     document.getElementById('uvForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        const btn = document.getElementById('submitBtn');
-        const status = document.getElementById('status-text');
-        const results = document.getElementById('results-container');
-        const standby = document.getElementById('standby-text');
+        overlay.style.display = "flex";
         
-        btn.disabled = true;
-        status.innerText = "Processing location data...";
-        standby.style.display = "none";
-        
+        const skinType = document.getElementById('skinType').value;
         const city = document.getElementById('city').value;
         const state = document.getElementById('state').value;
-        const zip = document.getElementById('zip').value;
 
         try {
             // Geocoding
-            const geoQuery = `${city}, ${state} ${zip} USA`;
+            const geoQuery = `${city}, ${state} USA`;
             const geoUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(geoQuery)}&limit=1`;
             const geoResponse = await fetch(geoUrl);
             const geoData = await geoResponse.json();
 
-            if (geoData.length === 0) throw new Error("Location not found. Please verify spelling.");
-            
+            if (geoData.length === 0) throw new Error("Location not found.");
             const lat = geoData[0].lat;
             const lon = geoData[0].lon;
 
-            // Fetch Data from Python Backend
-            status.innerText = "Querying NREL database...";
+            // Fetch Python Backend Data
             const payload = {
                 latitude: lat,
                 longitude: lon,
@@ -310,59 +324,69 @@
 
             if(!data.success) throw new Error(data.error);
 
-            // Update the UI
-            results.style.display = "block";
-            status.innerText = "Analysis complete.";
-            setTimeout(() => status.innerText = "", 3000); // Clear status after 3 seconds
+            const broadband = data.results.broadband_uvr_j_m2;
             
-            // Bold critical info
-            const dose = data.results.broadband_uvr_j_m2;
-            document.getElementById('main-readout').innerText = dose.toLocaleString() + " J/m²";
+            // CLINICAL ESTIMATION: Erythemally-weighted UV is roughly 0.2% of raw solar broadband.
+            const erythemalDose = broadband * 0.002; 
+            const patientMED = fitzMED[skinType];
 
-            // Update the Map (Clean Light Theme)
-            if (!map) {
-                map = L.map('map').setView([lat, lon], 12);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; OpenStreetMap contributors & CartoDB'
-                }).addTo(map);
+            // Update UI Readouts
+            document.getElementById('broadband-readout').innerText = broadband.toLocaleString() + " J/m²";
+            
+            const badge = document.getElementById('risk-badge');
+            if (erythemalDose >= patientMED) {
+                badge.innerText = "High (Burn Likely)";
+                badge.style.background = "var(--danger)";
+            } else if (erythemalDose >= (patientMED * 0.5)) {
+                badge.innerText = "Moderate (Caution)";
+                badge.style.background = "var(--warning)";
             } else {
-                map.setView([lat, lon], 12);
+                badge.innerText = "Low (Safe)";
+                badge.style.background = "var(--safe)";
             }
-            if (marker) map.removeLayer(marker);
-            // Elegant Navy Marker
-            marker = L.circleMarker([lat, lon], { color: '#1e3a5f', fillColor: '#1e3a5f', radius: 6, fillOpacity: 0.8 }).addTo(map);
 
-            // Build the Chart
+            // Switch Pages
+            overlay.style.display = "none";
+            inputView.classList.remove('active');
+            reportView.classList.add('active');
+
+            // Render Map (Timeout ensures map renders correctly inside newly visible div)
+            setTimeout(() => {
+                if (!map) {
+                    map = L.map('map').setView([lat, lon], 12);
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; OpenStreetMap'
+                    }).addTo(map);
+                } else {
+                    map.setView([lat, lon], 12);
+                }
+                if (marker) map.removeLayer(marker);
+                marker = L.circleMarker([lat, lon], { color: '#0284c7', radius: 8, fillOpacity: 0.8 }).addTo(map);
+                map.invalidateSize();
+            }, 100);
+
+            // Render Chart
             const ctx = document.getElementById('uvChart').getContext('2d');
             if (uvChart) uvChart.destroy(); 
             
             uvChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['Calculated Dose', 'Reference Average'],
+                    labels: ['Est. Erythemal Dose Received', `Patient Burn Threshold (Type ${skinType})`],
                     datasets: [{
-                        label: 'Radiant Exposure (J/m²)',
-                        data: [dose, 250000], 
-                        backgroundColor: ['#1e3a5f', '#d1d5db'],
-                        borderWidth: 0
+                        data: [erythemalDose, patientMED], 
+                        backgroundColor: [ (erythemalDose > patientMED ? '#ef4444' : '#0284c7'), '#94a3b8']
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: '#eaeaea' } },
-                        x: { grid: { display: false } }
-                    }
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
                 }
             });
 
         } catch (error) {
-            status.innerText = `Error: ${error.message}`;
-            status.style.color = "red";
-        } finally {
-            btn.disabled = false;
+            overlay.style.display = "none";
+            alert(`Error: ${error.message}`);
         }
     });
 </script>
