@@ -34,17 +34,14 @@
             padding: 40px 20px;
         }
 
-        /* --- SPA View Transitions --- */
         .view-container {
-            display: none; /* Hidden by default */
+            display: none; 
             width: 100%;
             max-width: 1000px;
             animation: fadeIn 0.4s ease-out forwards;
         }
         
-        .view-container.active {
-            display: block; /* Shows the active page */
-        }
+        .view-container.active { display: block; }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(15px); }
@@ -100,10 +97,7 @@
             transition: border-color 0.2s;
         }
 
-        input:focus, select:focus {
-            outline: none;
-            border-color: var(--medical-blue);
-        }
+        input:focus, select:focus { outline: none; border-color: var(--medical-blue); }
 
         button.primary-btn {
             width: 100%;
@@ -123,30 +117,17 @@
         button.primary-btn:hover { background-color: #1e293b; }
         button:disabled { background-color: #94a3b8; cursor: not-allowed; }
 
-        /* Secondary Back Button */
         button.back-btn {
-            background: none;
-            border: none;
-            color: var(--medical-blue);
-            font-family: 'Times New Roman', Times, serif;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            padding: 0;
-            margin-bottom: 20px;
+            background: none; border: none; color: var(--medical-blue);
+            font-family: 'Times New Roman', Times, serif; font-size: 16px;
+            font-weight: bold; cursor: pointer; padding: 0; margin-bottom: 20px;
             text-decoration: underline;
         }
 
-        /* --- Report Page Styling --- */
         .report-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f1f5f9;
-            padding: 20px;
-            border-radius: 6px;
-            margin-bottom: 30px;
-            border-left: 5px solid var(--medical-blue);
+            display: flex; justify-content: space-between; align-items: center;
+            background: #f1f5f9; padding: 20px; border-radius: 6px;
+            margin-bottom: 30px; border-left: 5px solid var(--medical-blue);
         }
 
         .readout-block { text-align: left; }
@@ -154,30 +135,39 @@
         .readout-value { font-size: 32px; font-weight: bold; color: var(--navy-accent); margin-top: 5px; }
         
         .risk-badge {
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: bold;
-            color: white;
-            font-size: 14px;
-            text-transform: uppercase;
+            padding: 8px 16px; border-radius: 20px; font-weight: bold;
+            color: white; font-size: 14px; text-transform: uppercase;
         }
 
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
 
         #map { height: 350px; width: 100%; border-radius: 6px; border: 1px solid var(--border-color); }
         .chart-container { height: 350px; width: 100%; border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; box-sizing: border-box; }
 
+        /* --- NEW: Clinical Recommendations Styling --- */
+        .clinical-protocol {
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 6px;
+            background: #f8fafc;
+            border-left: 5px solid var(--medical-blue);
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        .protocol-title {
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: var(--navy-accent);
+            margin-bottom: 15px;
+            letter-spacing: 0.5px;
+        }
+        .clinical-protocol ul { margin: 0; padding-left: 20px; color: var(--text-main); font-size: 16px; line-height: 1.6; }
+        .clinical-protocol li { margin-bottom: 10px; }
+
         #loading-overlay {
-            display: none;
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.9);
-            justify-content: center; align-items: center;
-            font-size: 24px; font-weight: bold; color: var(--medical-blue);
-            z-index: 1000;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9); justify-content: center; align-items: center;
+            font-size: 24px; font-weight: bold; color: var(--medical-blue); z-index: 1000;
         }
     </style>
 </head>
@@ -189,7 +179,6 @@
     <div class="panel input-panel">
         <h2>Patient & Location Parameters</h2>
         <form id="uvForm">
-            
             <div class="form-group">
                 <label>Fitzpatrick Skin Phototype</label>
                 <select id="skinType" required>
@@ -263,6 +252,12 @@
                 </div>
             </div>
         </div>
+
+        <div id="clinical-protocol" class="clinical-protocol">
+            <div class="protocol-title" id="protocol-title">Clinical Protocol</div>
+            <ul id="protocol-list"></ul>
+        </div>
+
     </div>
 </div>
 
@@ -274,10 +269,8 @@
     let marker = null;
     let uvChart = null;
 
-    // Standard Minimal Erythemal Dose (MED) J/m2 thresholds based on Fitzpatrick Type
     const fitzMED = { "I": 200, "II": 250, "III": 300, "IV": 450, "V": 600, "VI": 1000 };
 
-    // PAGE NAVIGATION LOGIC
     const inputView = document.getElementById('input-view');
     const reportView = document.getElementById('report-view');
     const overlay = document.getElementById('loading-overlay');
@@ -296,7 +289,6 @@
         const state = document.getElementById('state').value;
 
         try {
-            // Geocoding
             const geoQuery = `${city}, ${state} USA`;
             const geoUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(geoQuery)}&limit=1`;
             const geoResponse = await fetch(geoUrl);
@@ -306,7 +298,6 @@
             const lat = geoData[0].lat;
             const lon = geoData[0].lon;
 
-            // Fetch Python Backend Data
             const payload = {
                 latitude: lat,
                 longitude: lon,
@@ -325,32 +316,54 @@
             if(!data.success) throw new Error(data.error);
 
             const broadband = data.results.broadband_uvr_j_m2;
-            
-            // CLINICAL ESTIMATION: Erythemally-weighted UV is roughly 0.2% of raw solar broadband.
             const erythemalDose = broadband * 0.002; 
             const patientMED = fitzMED[skinType];
 
-            // Update UI Readouts
             document.getElementById('broadband-readout').innerText = broadband.toLocaleString() + " J/m²";
             
             const badge = document.getElementById('risk-badge');
+            const protocolBox = document.getElementById('clinical-protocol');
+            const protocolTitle = document.getElementById('protocol-title');
+            const protocolList = document.getElementById('protocol-list');
+
+            // --- DYNAMIC CLINICAL LOGIC ---
             if (erythemalDose >= patientMED) {
                 badge.innerText = "High (Burn Likely)";
                 badge.style.background = "var(--danger)";
+                protocolBox.style.borderLeftColor = "var(--danger)";
+                protocolTitle.innerText = "Urgent Action Plan";
+                protocolList.innerHTML = `
+                    <li><strong>Seek immediate shade:</strong> Your estimated exposure has exceeded your skin's natural defense threshold.</li>
+                    <li><strong>Apply broad-spectrum SPF 50+:</strong> Reapply immediately, especially if sweating or swimming.</li>
+                    <li><strong>Wear protective clothing:</strong> Utilize UPF 50+ garments, broad-brimmed hats, and UV-blocking sunglasses.</li>
+                    <li><strong>Monitor for Erythema:</strong> Hydrate well and monitor your skin for signs of acute sunburn (redness, heat, blistering).</li>
+                `;
             } else if (erythemalDose >= (patientMED * 0.5)) {
                 badge.innerText = "Moderate (Caution)";
                 badge.style.background = "var(--warning)";
+                protocolBox.style.borderLeftColor = "var(--warning)";
+                protocolTitle.innerText = "Preventative Protocol";
+                protocolList.innerHTML = `
+                    <li><strong>Elevated UV Load Detected:</strong> Limit further direct sun exposure during peak solar hours (10 AM - 4 PM).</li>
+                    <li><strong>Reapply Sunscreen:</strong> Ensure you have an even layer of SPF 30+ applied. Reapply every 2 hours.</li>
+                    <li><strong>Seek intermittent shade:</strong> Give your skin's melanocytes a chance to recover by taking breaks indoors.</li>
+                `;
             } else {
                 badge.innerText = "Low (Safe)";
                 badge.style.background = "var(--safe)";
+                protocolBox.style.borderLeftColor = "var(--safe)";
+                protocolTitle.innerText = "Maintenance Protocol";
+                protocolList.innerHTML = `
+                    <li><strong>Exposure is within safe clinical limits</strong> for your specific Fitzpatrick skin type.</li>
+                    <li><strong>Maintain baseline protection:</strong> Continue daily use of SPF 30+ on the face and neck to prevent long-term photoaging.</li>
+                    <li><strong>Protect your eyes:</strong> Wear UV-blocking sunglasses outdoors.</li>
+                `;
             }
 
-            // Switch Pages
             overlay.style.display = "none";
             inputView.classList.remove('active');
             reportView.classList.add('active');
 
-            // Render Map (Timeout ensures map renders correctly inside newly visible div)
             setTimeout(() => {
                 if (!map) {
                     map = L.map('map').setView([lat, lon], 12);
@@ -365,7 +378,6 @@
                 map.invalidateSize();
             }, 100);
 
-            // Render Chart
             const ctx = document.getElementById('uvChart').getContext('2d');
             if (uvChart) uvChart.destroy(); 
             
