@@ -144,22 +144,14 @@
         #map { height: 350px; width: 100%; border-radius: 6px; border: 1px solid var(--border-color); }
         .chart-container { height: 350px; width: 100%; border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; box-sizing: border-box; }
 
-        /* --- NEW: Clinical Recommendations Styling --- */
         .clinical-protocol {
-            margin-top: 30px;
-            padding: 25px;
-            border-radius: 6px;
-            background: #f8fafc;
-            border-left: 5px solid var(--medical-blue);
+            margin-top: 30px; padding: 25px; border-radius: 6px;
+            background: #f8fafc; border-left: 5px solid var(--medical-blue);
             animation: fadeIn 0.6s ease-out forwards;
         }
         .protocol-title {
-            font-size: 16px;
-            font-weight: bold;
-            text-transform: uppercase;
-            color: var(--navy-accent);
-            margin-bottom: 15px;
-            letter-spacing: 0.5px;
+            font-size: 16px; font-weight: bold; text-transform: uppercase;
+            color: var(--navy-accent); margin-bottom: 15px; letter-spacing: 0.5px;
         }
         .clinical-protocol ul { margin: 0; padding-left: 20px; color: var(--text-main); font-size: 16px; line-height: 1.6; }
         .clinical-protocol li { margin-bottom: 10px; }
@@ -231,11 +223,19 @@
         
         <div class="report-header">
             <div class="readout-block">
-                <div class="readout-title">Total Broadband Exposure</div>
+                <div class="readout-title">Total UV Dose</div>
                 <div class="readout-value" id="broadband-readout">0 J/m²</div>
             </div>
+            <div class="readout-block">
+                <div class="readout-title">Avg Raw GHI</div>
+                <div class="readout-value" id="ghi-readout" style="color: #64748b; font-size: 24px;">0 W/m²</div>
+            </div>
+            <div class="readout-block">
+                <div class="readout-title">Peak UV Rate</div>
+                <div class="readout-value" id="peak-uv-readout" style="color: #64748b; font-size: 24px;">0 W/m²</div>
+            </div>
             <div class="readout-block" style="text-align: right;">
-                <div class="readout-title">Clinical Sunburn Risk</div>
+                <div class="readout-title">Clinical Risk</div>
                 <div id="risk-badge" class="risk-badge" style="background: var(--safe); margin-top: 10px; display: inline-block;">Safe</div>
             </div>
         </div>
@@ -315,18 +315,24 @@
 
             if(!data.success) throw new Error(data.error);
 
+            // Extracting all three values from Python
             const broadband = data.results.broadband_uvr_j_m2;
+            const avgGhi = data.results.avg_ghi_w_m2;
+            const peakUv = data.results.peak_uv_w_m2;
+            
             const erythemalDose = broadband * 0.002; 
             const patientMED = fitzMED[skinType];
 
+            // Pushing the numbers to the dashboard
             document.getElementById('broadband-readout').innerText = broadband.toLocaleString() + " J/m²";
+            document.getElementById('ghi-readout').innerText = avgGhi.toLocaleString() + " W/m²";
+            document.getElementById('peak-uv-readout').innerText = peakUv.toLocaleString() + " W/m²";
             
             const badge = document.getElementById('risk-badge');
             const protocolBox = document.getElementById('clinical-protocol');
             const protocolTitle = document.getElementById('protocol-title');
             const protocolList = document.getElementById('protocol-list');
 
-            // --- DYNAMIC CLINICAL LOGIC ---
             if (erythemalDose >= patientMED) {
                 badge.innerText = "High (Burn Likely)";
                 badge.style.background = "var(--danger)";
