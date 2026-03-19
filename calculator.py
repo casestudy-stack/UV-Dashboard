@@ -64,8 +64,30 @@ class UVDoseCalculator:
         
         window_df = df.loc[mask].copy()
         
-        if window_df.empty:
-            return {"broadband_uvr_j_m2": 0.0}
+        if if window_df.empty:
+            return {
+                "broadband_uvr_j_m2": 0.0,
+                "avg_ghi_w_m2": 0.0,
+                "peak_uv_w_m2": 0.0
+            }
+
+        # The Speedometer (Rate in W/m^2)
+        # We grab the raw GHI average so you can compare it directly to the NASA CSV!
+        avg_ghi = window_df['GHI'].mean()
+        
+        # Calculate UV Irradiance (6% of GHI)
+        window_df['uv_w_m2'] = window_df['GHI'] * 0.06
+        peak_uv = window_df['uv_w_m2'].max()
+
+        # The Odometer (Total Dose in J/m^2)
+        # 3600 seconds in an hour
+        total_dose = (window_df['uv_w_m2'] * 3600).sum()
+        
+        return {
+            "broadband_uvr_j_m2": round(total_dose, 2),
+            "avg_ghi_w_m2": round(avg_ghi, 2),
+            "peak_uv_w_m2": round(peak_uv, 2)
+        }
 
         # Calculate clinical dose. UV is roughly 6% of the total shortwave radiation (GHI).
         # Interval is 3600 seconds for NASA's hourly data.
