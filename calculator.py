@@ -1,42 +1,48 @@
-import io
 import requests
 import pandas as pd
 from datetime import datetime
 
 class UVDoseCalculator:
-    def __init__(self, api_key: str, email: str):
-        self.api_key = api_key
-        self.email = email
-        self.session = requests.Session()
+    def __init__(self, api_key: str = None, email: str = None):
+        # We keep these arguments so app.py doesn't break, but we no longer need an API key!
+        pass
 
     def fetch_nsrdb_data(self, lat: float, lon: float, year: int) -> pd.DataFrame:
-        # We put the API key in the URL, but securely package everything else.
-        # We are using the TMY endpoint so it never crashes on future/missing years.
-        url = f"https://developer.nrel.gov/api/nsrdb/v2/solar/psm3-tmy-download.csv?api_key={self.api_key}"
+        # We fetch a solid, recent year of NASA Satellite Telemetry (2023) as our "Clinical Baseline".
+        # This makes it infinitely dynamic for future dates, bypassing NREL entirely.
         
-        # The "POST Payload Envelope"
-        payload = {
-            'email': self.email,
-            'wkt': f'POINT({lon} {lat})',
-            'names': 'tmy', 
-            'leap_day': 'false',
-            'interval': '60',
-            'utc': 'false',
-            'attributes': 'ghi'
+        url = "https://power.larc.nasa.gov/api/temporal/hourly/point"
+        params = {
+            "parameters": "ALLSKY_SFC_SW_DWN", # The NASA scientific code for GHI (W/m^2)
+            "community": "RE", # Renewable Energy baseline
+            "longitude": lon,
+            "latitude": lat,
+            "start": "20230101",
+            "end": "20231231",
+            "format": "JSON",
+            "time-standard": "LST" # Local Solar Time aligns perfectly with sun exposure
         }
-
-        # Notice we are using .post() instead of .get() here!
-        response = self.session.post(url, data=payload)
         
-        # If the government server complains, this will print the exact reason to your Render logs
-        if response.status_code != 200:
-            print(f"NREL API Error: {response.text}")
-            
+        response = requests.get(url, params=params)
         response.raise_for_status() 
 
-        # Parse the CSV data directly into a Pandas DataFrame
-        csv_data = "\n".join(response.text.split('\n')[2:])
-        df = pd.read_csv(io.StringIO(csv_data))
+        data = response.json()
+        
+        # Extract the hourly data from the NASA JSON envelope
+        hourly_data = data["properties"]["parameter"]["ALLSKY_SFC_SW_DWN"]
+        
+        # Convert directly to a Pandas DataFrame
+        df = pd.DataFrame(list(hourly_data.items()), columns=['timestamp', 'GHI'])
+        
+        # Clean the data (NASA uses -999 for missing values, we reset them to 0)
+        df.loc[df['GHI'] < 0, 'GHI'] = 0.0
+        
+        # Parse the timestamp (NASA Format: YYYYMMDDHH)
+        df['datetime'] = pd.to_datetime(df['timestamp'], format="%Y%m%d%H")
+        df['Month'] = df['datetime'].dt.month
+        df['Day'] = df['datetime'].dt.day
+        df['Hour'] = df['datetime'].dt.hour
+        df['Minute'] = 0 
         
         return df
 
@@ -46,22 +52,14 @@ class UVDoseCalculator:
         target_day = target_date.day
         
         start_hour = int(start_time.split(':')[0])
-        start_minute = int(start_time.split(':')[1])
         end_hour = int(end_time.split(':')[0])
-        end_minute = int(end_time.split(':')[1])
         
-        # DYNAMIC FILTER: We match the Month, Day, and Time exactly from the TMY baseline.
+        # DYNAMIC FILTER: Match the Month, Day, and Time exactly from the NASA baseline.
         mask = (
             (df['Month'] == target_month) & 
             (df['Day'] == target_day) &
-            (
-                (df['Hour'] > start_hour) | 
-                ((df['Hour'] == start_hour) & (df['Minute'] >= start_minute))
-            ) &
-            (
-                (df['Hour'] < end_hour) | 
-                ((df['Hour'] == end_hour) & (df['Minute'] <= end_minute))
-            )
+            (df['Hour'] >= start_hour) &
+            (df['Hour'] < end_hour)
         )
         
         window_df = df.loc[mask].copy()
@@ -69,8 +67,8 @@ class UVDoseCalculator:
         if window_df.empty:
             return {"broadband_uvr_j_m2": 0.0}
 
-        # Calculate clinical dose. GHI -> UV is roughly 6%. 
-        # Interval is 3600 seconds for hourly TMY data.
+        # Calculate clinical dose. UV is roughly 6% of the total shortwave radiation (GHI).
+        # Interval is 3600 seconds for NASA's hourly data.
         window_df['uv_w_m2'] = window_df['GHI'] * 0.06
         total_dose = (window_df['uv_w_m2'] * 3600).sum()
         
